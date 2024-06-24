@@ -18,7 +18,7 @@
 Wan R Yang, Daniel Ardeljan, Clarissa N Pacyna, Lindsay M Payer, Kathleen H Burns; SQuIRE reveals locus-specific regulation of interspersed repeat expression, Nucleic Acids Research, , gky1301, https://doi.org/10.1093/nar/gky1301
 
 
-## Installation ##
+~~## Installation ##
 
 SQuIRE is available on [bioconda](https://bioconda.github.io/index.html) and can be installed using [conda](https://anaconda.org/). We suggest running conda with [mamba](https://github.com/mamba-org/mamba) for speedup.
 
@@ -80,8 +80,11 @@ _*SQuIRE is compatible with the following specific versions of software:_*
 
 _*If installing these software with conda is unsuccessful, we recommend installing these versions with squire Build to ensure compatibility with SQuIRE.*_
   * [squire Build:](#squire-build)
-      * `squire Build -s all`
+      * `squire Build -s all`~~
 
+## No Installation ##
+
+Use the included Dockerfile to setup SQuIRE with no heachaches. Following pipeline tested and working up to Count.py (halfway).
 
 ## Pipeline Overview ##
 
