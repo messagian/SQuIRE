@@ -81,7 +81,7 @@ def make_tempfile(basename, step, outfolder):
 	tmpfile.close()
 	return tmpname
 
-def getlibsize(logfile, infile,multi_bed,uniq_bed,paired_end,debug):
+def getlibsize(logfile, infile, multi_bed, uniq_bed, paired_end, pthreads, debug):
 	if logfile:
 		STAR_logfile=open(logfile,'r')
 		for line in STAR_logfile:
@@ -96,7 +96,7 @@ def getlibsize(logfile, infile,multi_bed,uniq_bed,paired_end,debug):
 		STAR_logfile.close()
 	else:
 		count_temp = infile + "libsize"
-		linecountcommandlist = ["samtools", "view", infile, "|", "cut", "-f1", "|", "sort", "-k1,1", "|" , "uniq","|", "wc -l", ">", count_temp]
+		linecountcommandlist = ["samtools", "view", "-@", str(pthreads), infile, "|", "cut", "-f1", "|", "sort", "-k1,1", "|" , "uniq","|", "wc -l", ">", count_temp]
 		linecountcommand = " ".join(linecountcommandlist)
 		sp.check_call(["/bin/bash","-c",linecountcommand])
 		with open(count_temp, 'r') as count_file:
@@ -325,7 +325,7 @@ def is_paired(bamfile,basename,tempfolder,debug):
 	return paired
 
 
-def find_properpair(paired_bam, proper,nonproper):
+def find_properpair(paired_bam, proper, nonproper, pthreads):
 	##### FILTER INTO CONCORDANT AND DISCORDANT/SINGLE READS ####
 	#-b: output in BAM format
 	#-h: keep header
@@ -333,10 +333,10 @@ def find_properpair(paired_bam, proper,nonproper):
 	#-F4: skip unmapped reads (bit flag = 4)
 	#-f2 = keep proper pair
 	#-F2 = discard proper pair
-	samtoolscommand_list = ["samtools","view","-bf2", "-o", proper, paired_bam]
+	samtoolscommand_list = ["samtools","view", "-@", str(pthreads), "-bf2", "-o", proper, paired_bam]
 	samtoolscommand = " ".join(samtoolscommand_list)
 	sp.check_call(["/bin/bash", "-c", samtoolscommand])
-	samtoolscommand_list = ["samtools","view","-bF2", "-o", nonproper, paired_bam]
+	samtoolscommand_list = ["samtools","view", "-@", str(pthreads),"-bF2", "-o", nonproper, paired_bam]
 	samtoolscommand = " ".join(samtoolscommand_list)
 	sp.check_call(["/bin/bash", "-c", samtoolscommand])
 
@@ -491,7 +491,7 @@ def find_uniq(combined_tempfile, first_tempfile,unique_tempfile, multi_tempfile,
 	dupe_tempfile = combined_tempfile + "_dupe"
 	dupe_tempfile1 = combined_tempfile + "_dupe1"
 
-        skipline(combined_temfile, first_tempfile)
+        skipline(combined_tempfile, first_tempfile)
 #	dupe_command_list = ["awk","'!a[$4]++'", combined_tempfile, ">", first_tempfile] #skips lines if the read has already appeared in the file
 #	dupe_command = " ".join(dupe_command_list)
 #	sp.check_call(["/bin/bash", "-c", dupe_command])
@@ -517,6 +517,23 @@ def find_uniq(combined_tempfile, first_tempfile,unique_tempfile, multi_tempfile,
 		os.unlink(dupe_tempfile1)
 		os.unlink(combined_tempfile)
 		os.unlink(first_tempfile)
+def fast_filter_lines(file1, file2, output_file):
+    # Use a set to store the fourth field values from the first file
+    field_values = set()
+
+    # Read the first file and add the fourth field to the set
+    with open(file1, 'r') as f1:
+        for line in f1:
+            fields = line.strip().split('\t')
+            if len(fields) >= 4:
+                field_values.add(fields[3])
+
+    # Read the second file and write lines to the output file if the fourth field is not in the set
+    with open(file2, 'r') as f2, open(output_file, 'w') as out:
+        for line in f2:
+            fields = line.strip().split('\t')
+            if len(fields) >= 4 and fields[3] not in field_values:
+                out.write(line + '\n')
 
 def match_reads(R1, R2, strandedness, matched_file,unmatched_file1,unmatched_file2,debug):
 	#match  read1 and read2 if within 2kb of each other on same strand
@@ -574,12 +591,14 @@ def match_reads(R1, R2, strandedness, matched_file,unmatched_file1,unmatched_fil
 		awkcommand_list0 = ["awk", "-v", "OFS='\\t'","-v", "FS='\\t'","""'(""", unstranded,""") {print $0}'"""] #find pairs that match TE_ID and strand
 		awkcommand0 = " ".join(awkcommand_list0 + awk_inout_v1)
 		sp.check_call(["/bin/bash","-c",awkcommand0])
-	awkcommand_list = ["awk","-v", "OFS='\\t'","-v", "FS='\\t'", """'FNR==NR{a[$4]++;next}!a[$4]{print $0}'""", matched_file_v1,R1,   ">", unmatched_file1_v1] #writes lines in read1 that is not in matched file -> unmatched
-	awkcommand = " ".join(awkcommand_list)
-	sp.check_call(["/bin/bash","-c",awkcommand])
-	awkcommand_list = ["awk", "-v", "OFS='\\t'","-v", "FS='\\t'","""'FNR==NR{a[$4]++;next}!a[$4]{print $0}'""", matched_file_v1, R2,  ">", unmatched_file2_v1] #writes lines in read2 that is not in matched file -> unmatched
-	awkcommand = " ".join(awkcommand_list)
-	sp.check_call(["/bin/bash","-c",awkcommand])
+        fast_filter_lines(matched_file_v1, R1, unmatched_file1_v1)
+#	awkcommand_list = ["awk","-v", "OFS='\\t'","-v", "FS='\\t'", """'FNR==NR{a[$4]++;next}!a[$4]{print $0}'""", matched_file_v1,R1,   ">", unmatched_file1_v1] #writes lines in read1 that is not in matched file -> unmatched
+#	awkcommand = " ".join(awkcommand_list)
+#	sp.check_call(["/bin/bash","-c",awkcommand])
+        fast_filter_lines(matched_file_v1, R2, unmatched_file2_v1)
+#	awkcommand_list = ["awk", "-v", "OFS='\\t'","-v", "FS='\\t'","""'FNR==NR{a[$4]++;next}!a[$4]{print $0}'""", matched_file_v1, R2,  ">", unmatched_file2_v1] #writes lines in read2 that is not in matched file -> unmatched
+#	awkcommand = " ".join(awkcommand_list)
+#	sp.check_call(["/bin/bash","-c",awkcommand])
 	roundcommand_list = ["awk", "-v", "OFS='\\t'","-v", "FS='\\t'", """'{print $0, $2/100000}'""", """OFMT='%.f'""", unmatched_file1_v1, ">", rounded_1_v2]
 	roundcommand=" ".join(roundcommand_list)
 	sp.check_call(["/bin/bash","-c",roundcommand])
@@ -609,12 +628,14 @@ def match_reads(R1, R2, strandedness, matched_file,unmatched_file1,unmatched_fil
 	catcommand_list = ["cat", matched_file_v1, matched_file_v2, ">", matched_file ] #combines multi_aligned reads
 	catcommand = " ".join(catcommand_list)
 	sp.check_call(["/bin/bash","-c",catcommand])
-	awkcommand_list = ["awk","-v", "OFS='\\t'","-v", "FS='\\t'", """'FNR==NR{a[$4]++;next}!a[$4]{print $0}'""", matched_file,R1,   ">", unmatched_file1] #writes lines in read1 that is not in matched file -> unmatched
-	awkcommand = " ".join(awkcommand_list)
-	sp.check_call(["/bin/bash","-c",awkcommand])
-	awkcommand_list = ["awk", "-v", "OFS='\\t'","-v", "FS='\\t'","""'FNR==NR{a[$4]++;next}!a[$4]{print $0}'""", matched_file, R2,  ">", unmatched_file2] #writes lines in read2 that is not in matched file -> unmatched
-	awkcommand = " ".join(awkcommand_list)
-	sp.check_call(["/bin/bash","-c",awkcommand])
+        fast_filter_lines(matched_file, R1, unmatched_file1)
+#	awkcommand_list = ["awk","-v", "OFS='\\t'","-v", "FS='\\t'", """'FNR==NR{a[$4]++;next}!a[$4]{print $0}'""", matched_file,R1,   ">", unmatched_file1] #writes lines in read1 that is not in matched file -> unmatched
+#	awkcommand = " ".join(awkcommand_list)
+#	sp.check_call(["/bin/bash","-c",awkcommand])
+        fast_filter_lines(matched_file, R2, unmatched_file2)
+#	awkcommand_list = ["awk", "-v", "OFS='\\t'","-v", "FS='\\t'","""'FNR==NR{a[$4]++;next}!a[$4]{print $0}'""", matched_file, R2,  ">", unmatched_file2] #writes lines in read2 that is not in matched file -> unmatched
+#	awkcommand = " ".join(awkcommand_list)
+#	sp.check_call(["/bin/bash","-c",awkcommand])
 	if not debug:
 		os.unlink(rounded_1_v1)
 		os.unlink(rounded_2_v1)
@@ -1704,7 +1725,7 @@ def main(**kwargs):
 		paired_bam = bamfile
 		proper_bam = make_tempfile(basename,"proper_bam", tempfolder)
 		nonproper_bam = make_tempfile(basename,"nonproper_bam", tempfolder)
-		find_properpair(paired_bam, proper_bam,nonproper_bam)
+		find_properpair(paired_bam, proper_bam, nonproper_bam, pthreads)
 
 		if verbosity:
 			print("Intersecting bam files with TE bedfile "+ str(datetime.now())  + "\n",file = sys.stderr)
@@ -1850,7 +1871,7 @@ def main(**kwargs):
 			print("Identifying multi read pairs with one end unique"+ str(datetime.now())  + "\n",file = sys.stderr)
 		find_paired_uniq(multi_bed_pre,paired_uniq_tempfile,multi_bed,unique_bed,debug)
 
-		aligned_libsize = getlibsize(logfile, bamfile,multi_bed,unique_bed,paired_end,debug)
+		aligned_libsize = getlibsize(logfile, bamfile,multi_bed,unique_bed,paired_end,pthreads,debug)
 
 	######## COUNT READ(S) #########################
 	read_multidict={}  #dictionary to store TE_IDs for each read alignment
