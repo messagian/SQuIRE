@@ -72,7 +72,7 @@ def genepred_to_bed(genepred,bed,outfolder):
     genepredtobedcommand=" ".join(genepredtobedcommand_list)
     sp.check_call(["/bin/sh", "-c", genepredtobedcommand])    
 
-    sort_commandlist = ["sort","-k1,1", "-k2,2n",genepred,refGene_temp, ">", bed]
+    sort_commandlist = ["sort", "-k2,2n",refGene_temp, ">", bed]
     sort_command = " ".join(sort_commandlist)
     sp.check_call(["/bin/sh", "-c", sort_command])
 
