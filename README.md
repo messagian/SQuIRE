@@ -87,7 +87,7 @@ _*If installing these software with conda is unsuccessful, we recommend installi
 
 ## No Installation ##
 
-Use the included Dockerfile to setup SQuIRE with no heachaches. Following pipeline tested and working up to Count.py (halfway).
+Use the included Dockerfile to setup SQuIRE with no heachaches. Following pipeline tested and working up to Count.py.
 
 ## Pipeline Overview ##
 
