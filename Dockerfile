@@ -20,7 +20,7 @@ RUN apt install -y libcurl4-gnutls-dev
 
 #INSTALL R 3.4.1
 RUN wget -c https://cran.r-project.org/src/base/R-3/R-3.4.1.tar.gz
-RUN tar -xf R-3.4.1.tar.gz && rm R-3.4.1.tar.gz 
+RUN tar -xf R-3.4.1.tar.gz && rm R-3.4.1.tar.gz
 WORKDIR /root/R-3.4.1
 RUN ./configure --with-readline=no --with-x=no
 RUN make -j $(expr $(nproc --all) / 2)
@@ -43,7 +43,7 @@ RUN ./configure --with-ensurepip=install --enable-optimizations --prefix=$HOME -
 WORKDIR /usr/bin
 RUN ln -s ~/Python-2.7.14/python
 WORKDIR /usr/lib
-RUN ln -s ~/Python-2.7.14/libpython2.7.so && ln -s ~/Python-2.7.14/libpython2.7.so.1.0 
+RUN ln -s ~/Python-2.7.14/libpython2.7.so && ln -s ~/Python-2.7.14/libpython2.7.so.1.0
 RUN python -m pip install --upgrade --trusted-host pypi.python.org pip
 
 RUN apt install -y libncurses-dev
@@ -58,6 +58,7 @@ RUN python -m pip install urllib3[secure]
 RUN python -m pip install setuptools
 RUN python -m pip install --upgrade setuptools
 RUN python -m pip install pyfaidx
+RUN python -m pip install tqdm
 
 #SQuIRE INSTALLATION
 RUN git clone https://github.com/messagian/SQuIRE/
@@ -70,13 +71,13 @@ RUN python squire/Build.py -v -s all
 WORKDIR /root/ucsc
 RUN rsync -aP rsync://hgdownload.soe.ucsc.edu/genome/admin/exe/linux.x86_64/ ./
 WORKDIR /root
-RUN source .bashrc; echo "export PATH='/root/ucsc':\$PATH" | tee -a .bashrc
+RUN bash -i; source .bashrc; echo "export PATH='/root/ucsc':\$PATH" | tee -a .bashrc
 
 WORKDIR /root
 
+# RUN wget https://github.com/cli/cli/releases/download/v2.52.0/gh_2.52.0_linux_amd64.deb
+# RUN dpkg -i gh_2.52.0_linux_amd64.deb
+
+#prep SQuIRE
 RUN mkdir squire_data
-
-
-
-
-
+RUN export PATH='/root/ucsc':$PATH; python SQuIRE/squire/Fetch.py -b hg38 -f -c -r -g -x -p 32 -v && python SQuIRE/squire/Clean.py -b hg38 -v
