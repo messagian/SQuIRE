@@ -89,7 +89,7 @@ _*If installing these software with conda is unsuccessful, we recommend installi
 
 Use the included Dockerfile to setup SQuIRE with no heachaches. Alternatively the squire.def file sets up SQuIRE like the Dockerfile but for singularity for HPC. It also runs Fetch.py and Clean.py at build time to completely setup SQuIRE. The flag --tmpdir=$SOMEWHERE where there are at least 40GB of free disk space is recommended, otherwise singularity will write in its default cache folder.
 
-Following pipeline fully tested and working up to Count.py with speedup of 10+x on Count.py.
+Following pipeline fully tested and working up to Count.py with speedup of X10+ on Count.py.
 
 ## Pipeline Overview ##
 
